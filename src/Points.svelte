@@ -6,35 +6,30 @@
 	let el, regl, tween, pointsBuffer;
 
 	export let step = 0;
-	
-	const counts = [1, 100, 10000, 1000000];
+	export let counts = [1, 100, 10000, 1000000];
+	export let initialCoords = [0.5, 0.5];
+	export let pointColor = [255, 76, 0];
+	export let pointOpacity = 0.6;
+
 	const random = () => Math.acos(-((Math.random() * 2) - 1)) / Math.PI;
 	// const getRandomPositions = (count) => Array(count).fill(null).map(i => [(random() * 2) - 1, (random() * 2)  - 1]);
 	const getOpacity = (step, i) => {
-		let count = 0;
-		for (let j = 0; j <= step; j ++) {
-			count += counts[j];
-			if (i < count) return 0.8;
-		}
+		if (i < counts[step]) return pointOpacity;
 		return 0;
 	};
 	
-	const positions = [];
+	const positions = initialCoords ? [[initialCoords[0] / Math.pow(10, counts.length - 1), initialCoords[0] / Math.pow(10, counts.length - 1)]] : [];
 	for (let i = 0; i < counts.length; i ++) {
-    const c = counts[i];
-		if (i === 0) {
-			positions.push([0, 0]);
-		} else {
-			for (let j = 0; j < c; j ++) {
-				positions.push([((random() * 2) - 1) / Math.pow(10, counts.length - 1 - i), ((random() * 2) - 1) / Math.pow(10, counts.length - 1 - i)]);
-			}
+		while (positions.length < counts[i]) {
+			positions.push([Math.abs((random() * 2) - 1) / Math.pow(10, counts.length - 1 - i), Math.abs((random() * 2) - 1) / Math.pow(10, counts.length - 1 - i)]);
 		}
   }
+	console.log(positions)
 
 	const setPoints = (step) => {
-    const scale = Math.pow(10, counts.length - 1 - step % counts.length);
+    const scale = Math.pow(10, counts.length - 1 - step % counts.length) * 2;
 		console.log("scale", scale)
-    return positions.map((p, i) => [p[0] * scale, p[1] * scale, getOpacity(step, i), Math.sqrt(scale) * 4]);
+    return positions.map((p, i) => [p[0] * scale - 1, p[1] * scale - 1, getOpacity(step, i), Math.sqrt(scale) * 4]);
   };
 	
 	onMount(() => {
@@ -47,7 +42,6 @@
 		  vert: `
 		precision mediump float;
 		attribute vec4 points;
-		uniform float pointSize;
 		varying float opacity;
 		
 		void main() {
@@ -58,12 +52,13 @@
 		  frag: `
 		precision lowp float;
 		varying float opacity;
+		uniform vec3 pointColor;
 		
 		void main() {
 		  if (length(gl_PointCoord.xy - 0.5) > 0.5) {
 		    discard;
 		  }
-		  gl_FragColor = vec4(1.0, 0.3, 0.0, opacity);
+		  gl_FragColor = vec4(pointColor, opacity);
 		}`,
 		
 		  attributes: {
@@ -72,6 +67,7 @@
 		
 		  uniforms: {
 		    pointSize: 6,
+				pointColor: pointColor.map(val => val / 255)
 		  },
 
 			blend: {
@@ -86,7 +82,7 @@
 
 			depth: { enable: false },
 		
-		  count: counts.reduce((a, b) => a + b, 0),
+		  count: positions.length,
 		  primitive: 'points'
 		});
 		
